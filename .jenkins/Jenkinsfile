@@ -32,9 +32,7 @@ pipeline {
 						script {
 							env.BASE_IMAGE                     = "${DOCKERHUB_NAMESPACE}/${IMAGE}:latest"
 							env.BUILDX_PUSH_TAGS               = "-t ${BASE_IMAGE}"
-							env.BUILDX_PUSH_TAGS_ACMESH        = "-t ${DOCKERHUB_NAMESPACE}/${IMAGE}:acmesh"
 							env.BUILDX_PUSH_TAGS_CERTBOT       = "-t ${DOCKERHUB_NAMESPACE}/${IMAGE}:certbot"
-							env.BUILDX_PUSH_TAGS_ACMESH_GOLANG = "-t ${DOCKERHUB_NAMESPACE}/${IMAGE}:acmesh-golang"
 							env.BUILDX_PUSH_TAGS_CERTBOT_NODE  = "-t ${DOCKERHUB_NAMESPACE}/${IMAGE}:certbot-node"
 						}
 					}
@@ -49,12 +47,9 @@ pipeline {
 						script {
 							// Defaults to the Branch name, which is applies to all branches AND pr's
 							env.BASE_IMAGE                     = "${DOCKERHUB_NAMESPACE}/${IMAGE}:github-${BRANCH_LOWER}"
-							env.ACMESH_IMAGE                   = "${BASE_IMAGE}-acmesh"
 							env.CERTBOT_IMAGE                  = "${BASE_IMAGE}-certbot"
 							env.BUILDX_PUSH_TAGS               = "-t ${BASE_IMAGE}"
-							env.BUILDX_PUSH_TAGS_ACMESH        = "${BUILDX_PUSH_TAGS}-acmesh"
 							env.BUILDX_PUSH_TAGS_CERTBOT       = "${BUILDX_PUSH_TAGS}-certbot"
-							env.BUILDX_PUSH_TAGS_ACMESH_GOLANG = "${BUILDX_PUSH_TAGS}-acmesh-golang"
 							env.BUILDX_PUSH_TAGS_CERTBOT_NODE  = "${BUILDX_PUSH_TAGS}-certbot-node"
 						}
 					}
@@ -79,7 +74,6 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'jc21-dockerhub', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
 					sh 'docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}"'
-					sh "./scripts/buildx --push -f docker/Dockerfile.acmesh ${BUILDX_PUSH_TAGS_ACMESH}"
 					sh "./scripts/buildx --push -f docker/Dockerfile.certbot ${BUILDX_PUSH_TAGS_CERTBOT}"
 				}
 			}
@@ -91,7 +85,6 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'jc21-dockerhub', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
 					sh 'docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}"'
-					sh "./scripts/buildx --push -f docker/Dockerfile.acmesh-golang ${BUILDX_PUSH_TAGS_ACMESH_GOLANG}"
 					sh "./scripts/buildx --push -f docker/Dockerfile.certbot-node ${BUILDX_PUSH_TAGS_CERTBOT_NODE}"
 				}
 			}
@@ -112,8 +105,6 @@ pipeline {
 - `${DOCKERHUB_NAMESPACE}/${IMAGE}:github-${BRANCH_LOWER}`
 - `${DOCKERHUB_NAMESPACE}/${IMAGE}:github-${BRANCH_LOWER}-certbot`
 - `${DOCKERHUB_NAMESPACE}/${IMAGE}:github-${BRANCH_LOWER}-certbot-node`
-- `${DOCKERHUB_NAMESPACE}/${IMAGE}:github-${BRANCH_LOWER}-acmesh`
-- `${DOCKERHUB_NAMESPACE}/${IMAGE}:github-${BRANCH_LOWER}-acmesh-golang`
 """)
 				}
 			}
