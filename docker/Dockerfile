@@ -13,6 +13,8 @@ ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-source/releases/downloa
 
 RUN echo "Base: debian:trixie-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install runtime dependencies
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
