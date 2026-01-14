@@ -1,9 +1,9 @@
-ARG BASE_IMAGE=nginxproxymanager/nginx-full:latest
+ARG BASE_IMAGE=markd3ng/nginx-full:latest
 FROM $BASE_IMAGE AS final
 ARG BASE_IMAGE
 ARG TARGETPLATFORM
 
-LABEL maintainer="Jamie Curnow <jc@jc21.com>"
+LABEL maintainer="Mark Deng"
 
 RUN echo "Acme.sh: $BASE_IMAGE, ${TARGETPLATFORM:-linux/amd64}" >> /built-for-arch
 
@@ -27,5 +27,4 @@ COPY ./files/acme.sh-wrapper /bin/acme.sh
 # Test that the wrapper script is working
 RUN /bin/acme.sh -h
 
-LABEL org.label-schema.cmd="docker run --rm -ti nginxproxymanager/nginx-full:acmesh"
-
+LABEL org.label-schema.cmd="docker run --rm -ti markd3ng/nginx-full:acmesh"
