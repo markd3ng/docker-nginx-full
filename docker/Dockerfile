@@ -41,10 +41,11 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -rf /var/cache/* /var/log/* /tmp/* /var/lib/dpkg/status-old
 
-# Download and extract pre-built Nginx
-ADD ${NGINX_RELEASE_URL}/nginx-custom-linux-${TARGETARCH}.tar.gz /tmp/
-RUN tar -xzf /tmp/nginx-custom-linux-${TARGETARCH}.tar.gz -C / \
-	&& rm /tmp/nginx-custom-linux-${TARGETARCH}.tar.gz
+# Copy local pre-built Nginx
+COPY nginx-custom.tar.gz /tmp/
+RUN tar -xzf /tmp/nginx-custom.tar.gz -C / \
+	&& rm /tmp/nginx-custom.tar.gz \
+	&& ldconfig
 
 # Create directories required by NPM at runtime
 RUN mkdir -p /etc/nginx/conf.d \
