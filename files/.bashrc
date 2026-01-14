@@ -16,7 +16,10 @@ alias h='cd ~;clear;'
 
 echo -e -n '\E[1;34m'
 figlet -w 120 "nginx-full"
-echo -e "\E[1;36mOpenResty \E[1;32m${OPENRESTY_VERSION:-unknown}\E[1;36m, ${ID:-debian} \E[1;32m${VERSION:-unknown}\E[1;36m\E[0m"
+
+# Get Nginx version
+NGINX_VERSION=$(/usr/sbin/nginx -v 2>&1 | grep -oP 'nginx/\K[0-9.]+' || echo "unknown")
+echo -e "\E[1;36mNginx \E[1;32m${NGINX_VERSION}\E[1;36m, ${ID:-debian} \E[1;32m${VERSION:-unknown}\E[1;36m\E[0m"
 echo -e -n '\E[1;34m'
 cat /built-for-arch
 echo -e '\E[0m'
