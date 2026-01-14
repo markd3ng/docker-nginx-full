@@ -1,48 +1,19 @@
 #############
-# Nginx Builder
+# Nginx Custom (Pre-built from nginx-source)
 #############
 
-FROM debian:bookworm-slim AS nginxbuilder
-
-ARG OPENRESTY_VERSION
-ARG LUA_VERSION
-ARG LUAROCKS_VERSION
-
-RUN apt-get update \
-	&& apt-get install -y \
-	build-essential \
-	ca-certificates \
-	libncurses-dev \
-	libpcre3-dev \
-	libreadline-dev \
-	libssl-dev \
-	openssl unzip \
-	wget \
-	zlib1g-dev \
-	git \
-	libmaxminddb-dev
-
-# Lua build
-COPY ./scripts/build-lua /tmp/build-lua
-RUN /tmp/build-lua
-
-# Nginx build
-COPY ./scripts/build-openresty /tmp/build-openresty
-RUN /tmp/build-openresty
-
-#############
-# Final Image
-#############
-
-FROM debian:bookworm-slim AS final
-LABEL maintainer="Jamie Curnow <jc@jc21.com>"
+FROM debian:trixie-slim AS final
+LABEL maintainer="Mark Deng"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG TARGETPLATFORM
-RUN echo "Base: debian:bookworm-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
+ARG TARGETARCH
+ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-source/releases/download/rolling"
 
-# OpenResty uses LuaJIT which has a dependency on GCC
+RUN echo "Base: debian:trixie-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
+
+# Install runtime dependencies
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 	apache2-utils \
@@ -50,58 +21,51 @@ RUN apt-get update \
 	curl \
 	figlet \
 	jq \
-	libncurses6 \
-	libpcre3 \
-	libreadline8 \
+	libmaxminddb0 \
+	libxml2 \
+	libxslt1.1 \
+	libgd3 \
+	libpam0g \
+	libzstd1 \
+	libpcre2-8-0 \
 	openssl \
 	perl \
 	tzdata \
 	unzip \
-	zlib1g \
-	gettext \
 	wget \
 	xz-utils \
-	libmaxminddb-dev \
 	moreutils \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -rf /var/cache/* /var/log/* /tmp/* /var/lib/dpkg/status-old
 
+# Download and extract pre-built Nginx
+ADD ${NGINX_RELEASE_URL}/nginx-custom-linux-${TARGETARCH}.tar.gz /tmp/
+RUN tar -xzf /tmp/nginx-custom-linux-${TARGETARCH}.tar.gz -C / \
+	&& rm /tmp/nginx-custom-linux-${TARGETARCH}.tar.gz
+
+# Create directories required by NPM at runtime
+RUN mkdir -p /etc/nginx/conf.d \
+	&& mkdir -p /run/nginx \
+	&& mkdir -p /tmp/nginx/body \
+	&& mkdir -p /var/cache/nginx \
+	&& mkdir -p /var/lib/nginx/cache/public \
+	&& mkdir -p /var/lib/nginx/cache/private \
+	&& mkdir -p /var/log/nginx \
+	&& touch /var/log/nginx/error.log \
+	&& touch /var/log/nginx/access.log
+
+# Create openresty symlinks (NPM code calls 'openresty' command)
+RUN ln -sf /usr/sbin/nginx /usr/local/bin/openresty \
+	&& ln -sf /usr/sbin/nginx /usr/bin/openresty
+
+# Copy shell config
 COPY ./files/.bashrc /root/.bashrc
-
-# Copy lua and luarocks builds from first image
-COPY --from=nginxbuilder /tmp/lua /tmp/lua
-COPY --from=nginxbuilder /tmp/luarocks /tmp/luarocks
-COPY ./scripts/install-lua /tmp/install-lua
-
-# Copy openresty build from first image
-COPY --from=nginxbuilder /tmp/openresty /tmp/openresty
-COPY ./scripts/install-openresty /tmp/install-openresty
-
-# Copy crowdsec openresty bouncer install script
-COPY ./scripts/install-crowdsec_openresty_bouncer /tmp/install-crowdsec_openresty_bouncer
-
-ARG OPENRESTY_VERSION
-ARG CROWDSEC_OPENRESTY_BOUNCER_VERSION
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-	OPENRESTY_VERSION=${OPENRESTY_VERSION} \
-	CROWDSEC_OPENRESTY_BOUNCER_VERSION=${CROWDSEC_OPENRESTY_BOUNCER_VERSION}
-
-# Install openresty, lua, then clean up file system
-RUN apt-get update \
-	&& apt-get install -y gcc make socat git \
-	&& /tmp/install-lua \
-	&& /tmp/install-openresty \
-	&& apt-get remove -y make gcc git wget gettext \
-	&& apt-get autoremove -y \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& rm -rf /var/cache/* /var/log/* /tmp/* /var/lib/dpkg/status-old
 
 LABEL org.label-schema.schema-version="1.0" \
 	org.label-schema.license="MIT" \
 	org.label-schema.name="nginx-full" \
 	org.label-schema.description="A base image for use by Nginx Proxy Manager" \
-	org.label-schema.url="https://github.com/nginxproxymanager/docker-nginx-full" \
-	org.label-schema.vcs-url="https://github.com/nginxproxymanager/docker-nginx-full.git" \
-	org.label-schema.cmd="docker run --rm -ti nginxproxymanager/nginx-full:latest"
+	org.label-schema.url="https://github.com/markd3ng/docker-nginx-full" \
+	org.label-schema.vcs-url="https://github.com/markd3ng/docker-nginx-full.git" \
+	org.label-schema.cmd="docker run --rm -ti markd3ng/nginx-full:latest"

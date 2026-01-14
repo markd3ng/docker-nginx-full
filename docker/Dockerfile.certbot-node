@@ -1,9 +1,9 @@
-ARG CERTBOT_IMAGE=nginxproxymanager/nginx-full:certbot
+ARG CERTBOT_IMAGE=markd3ng/nginx-full:certbot
 FROM $CERTBOT_IMAGE AS final
 ARG CERTBOT_IMAGE
 ARG TARGETPLATFORM
 
-LABEL maintainer="Jamie Curnow <jc@jc21.com>"
+LABEL maintainer="Mark Deng"
 
 RUN echo "Node: $CERTBOT_IMAGE, ${TARGETPLATFORM:-linux/amd64}" >> /built-for-arch
 
@@ -11,11 +11,11 @@ ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 	&& apt-get update \
-	&& apt-get install -y gcc make g++ git nodejs \
+	&& apt-get install -y --no-install-recommends gcc make g++ git nodejs \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& npm install -g yarn \
-	&& ln -s /usr/bin/python3 /usr/bin/python
+	&& ln -sf /usr/bin/python3 /usr/bin/python
 
 COPY ./files/.bashrc.certbot-node /root/.bashrc
 
@@ -24,4 +24,4 @@ COPY ./files/test.js /tmp/test.js
 RUN node /tmp/test.js \
 	&& rm -f /tmp/test.js
 
-LABEL org.label-schema.cmd="docker run --rm -ti nginxproxymanager/nginx-full:certbot-node"
+LABEL org.label-schema.cmd="docker run --rm -ti markd3ng/nginx-full:certbot-node"
