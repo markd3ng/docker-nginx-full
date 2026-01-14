@@ -8,6 +8,7 @@ LABEL maintainer="Mark Deng"
 RUN echo "Node: $CERTBOT_IMAGE, ${TARGETPLATFORM:-linux/amd64}" >> /built-for-arch
 
 ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 	&& apt-get update \
