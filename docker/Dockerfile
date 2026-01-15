@@ -10,7 +10,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG NGINX_VERSION
-ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-source/releases/download/nginx-mainline-mk/${NGINX_VERSION}"
+ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-builder/releases/download/nginx-mainline-mk/${NGINX_VERSION}"
 
 RUN echo "Base: debian:trixie-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
 
@@ -74,8 +74,8 @@ COPY ./files/.bashrc /root/.bashrc
 
 LABEL org.label-schema.schema-version="1.0" \
 	org.label-schema.license="MIT" \
-	org.label-schema.name="nginx-full" \
+	org.label-schema.name="nginx-base-image" \
 	org.label-schema.description="A base image for use by Nginx Proxy Manager" \
-	org.label-schema.url="https://github.com/markd3ng/docker-nginx-full" \
-	org.label-schema.vcs-url="https://github.com/markd3ng/docker-nginx-full.git" \
-	org.label-schema.cmd="docker run --rm -ti markd3ng/nginx-full:latest"
+	org.label-schema.url="https://github.com/markd3ng/nginx-base-image" \
+	org.label-schema.vcs-url="https://github.com/markd3ng/nginx-base-image.git" \
+	org.label-schema.cmd="docker run --rm -ti markd3ng/nginx-base-image:latest"
