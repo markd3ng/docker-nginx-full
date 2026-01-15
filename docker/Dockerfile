@@ -51,6 +51,9 @@ RUN cd /tmp \
 	&& rm nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz sha256sums.txt \
 	&& ldconfig
 
+# Download expected modules list for self-describing tests
+ADD ${NGINX_RELEASE_URL}/expected_modules.txt /etc/nginx/modules/expected_modules.txt
+
 # Create directories required by NPM at runtime
 RUN mkdir -p /etc/nginx/conf.d \
 	&& mkdir -p /run/nginx \
