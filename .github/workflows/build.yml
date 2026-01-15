@@ -48,7 +48,7 @@ jobs:
       - name: Resolve Nginx Version
         id: nginx_version
         run: |
-          TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/markd3ng/nginx-source.git | grep -oE "nginx-mainline-mk/[0-9.]+" | tail -n1)
+          TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/markd3ng/nginx-source.git | grep -oE "nginx-mainline-mk/[0-9.]+(-[0-9]+)?" | tail -n1)
           VERSION=${TAG#nginx-mainline-mk/}
           echo "Found Nginx Version: $VERSION"
           echo "NGINX_VERSION=$VERSION" >> $GITHUB_ENV
