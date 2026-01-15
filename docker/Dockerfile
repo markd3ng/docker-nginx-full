@@ -43,7 +43,7 @@ RUN apt-get update \
 	&& rm -rf /var/cache/* /var/log/* /tmp/* /var/lib/dpkg/status-old
 
 # Download and extract pre-built Nginx
-ADD ${NGINX_RELEASE_URL}/sha256sums.txt /tmp/sha256sums.txt
+ADD ${NGINX_RELEASE_URL}/sha256sums-${TARGETARCH}.txt /tmp/sha256sums.txt
 ADD ${NGINX_RELEASE_URL}/nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz /tmp/
 RUN cd /tmp \
 	&& grep "nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz" sha256sums.txt | sha256sum -c - \
