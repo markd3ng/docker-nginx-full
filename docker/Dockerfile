@@ -9,7 +9,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG TARGETPLATFORM
 ARG TARGETARCH
-ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-source/releases/download/rolling"
+ARG NGINX_VERSION
+ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-source/releases/download/nginx-mainline-mk/${NGINX_VERSION}"
 
 RUN echo "Base: debian:trixie-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
 
@@ -42,9 +43,12 @@ RUN apt-get update \
 	&& rm -rf /var/cache/* /var/log/* /tmp/* /var/lib/dpkg/status-old
 
 # Download and extract pre-built Nginx
-ADD ${NGINX_RELEASE_URL}/nginx-custom-linux-${TARGETARCH}.tar.gz /tmp/
-RUN tar -xzf /tmp/nginx-custom-linux-${TARGETARCH}.tar.gz -C / \
-	&& rm /tmp/nginx-custom-linux-${TARGETARCH}.tar.gz \
+ADD ${NGINX_RELEASE_URL}/sha256sums.txt /tmp/sha256sums.txt
+ADD ${NGINX_RELEASE_URL}/nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz /tmp/
+RUN cd /tmp \
+	&& grep "nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz" sha256sums.txt | sha256sum -c - \
+	&& tar -xzf nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz -C / \
+	&& rm nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz sha256sums.txt \
 	&& ldconfig
 
 # Create directories required by NPM at runtime

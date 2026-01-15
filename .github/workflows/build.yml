@@ -45,6 +45,14 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=pr
 
+      - name: Resolve Nginx Version
+        id: nginx_version
+        run: |
+          TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/markd3ng/nginx-source.git | grep -oE "nginx-mainline-mk/[0-9.]+" | tail -n1)
+          VERSION=${TAG#nginx-mainline-mk/}
+          echo "Found Nginx Version: $VERSION"
+          echo "NGINX_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -54,6 +62,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NGINX_VERSION=${{ env.NGINX_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
