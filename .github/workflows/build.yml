@@ -48,9 +48,19 @@ jobs:
       - name: Resolve Nginx Version
         id: nginx_version
         run: |
-          TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/markd3ng/nginx-source.git | grep -oE "nginx-mainline-mk/[0-9.]+(-[0-9]+)?" | tail -n1)
-          VERSION=${TAG#nginx-mainline-mk/}
-          echo "Found Nginx Version: $VERSION"
+          # Get the full tag name (e.g., nginx-mainline-mk/1.29.4-41)
+          FULL_TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/markd3ng/nginx-builder.git | grep -oE "nginx-mainline-mk/[0-9.]+(-[0-9]+)?" | tail -n1)
+          # URL encode the tag for GitHub release download URL (replace / with %2F)
+          ENCODED_TAG=$(echo "$FULL_TAG" | sed 's/\//%2F/g')
+          # Just the version number (e.g., 1.29.4-41)
+          VERSION=${FULL_TAG#nginx-mainline-mk/}
+          
+          echo "Full Tag: $FULL_TAG"
+          echo "Encoded Tag: $ENCODED_TAG"
+          echo "Version: $VERSION"
+          
+          echo "NGINX_FULL_TAG=$FULL_TAG" >> $GITHUB_ENV
+          echo "NGINX_ENCODED_TAG=$ENCODED_TAG" >> $GITHUB_ENV
           echo "NGINX_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build and push
@@ -64,6 +74,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NGINX_VERSION=${{ env.NGINX_VERSION }}
+            NGINX_ENCODED_TAG=${{ env.NGINX_ENCODED_TAG }}
+            NGINX_FULL_TAG=${{ env.NGINX_FULL_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
