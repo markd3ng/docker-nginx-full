@@ -56,6 +56,7 @@ ADD ${NGINX_RELEASE_URL}/expected_modules.txt /etc/nginx/modules/expected_module
 
 # Create directories required by NPM at runtime
 RUN mkdir -p /etc/nginx/conf.d \
+	&& mkdir -p /etc/nginx/nginx \
 	&& mkdir -p /run/nginx \
 	&& mkdir -p /tmp/nginx/body \
 	&& mkdir -p /var/cache/nginx \
