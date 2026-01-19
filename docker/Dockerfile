@@ -13,7 +13,7 @@ ARG NGINX_VERSION
 ARG NGINX_ENCODED_TAG
 ARG NGINX_FULL_TAG
 # Use URL-encoded tag for download URL (GitHub requires %2F instead of / in tag names)
-ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-builder/releases/download/${NGINX_ENCODED_TAG}"
+ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-builder-ng/releases/download/${NGINX_ENCODED_TAG}"
 
 RUN echo "Base: debian:trixie-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
 
