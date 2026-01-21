@@ -9,10 +9,21 @@ RESET='\E[0m'
 REGISTRY=${REGISTRY:-}
 DOCKER_IMAGE="${REGISTRY}nginxproxymanager/nginx-full"
 
-export OPENRESTY_VERSION=1.27.1.2
-export CROWDSEC_OPENRESTY_BOUNCER_VERSION=0.1.7
-export LUA_VERSION=5.1.5
-export LUAROCKS_VERSION=3.3.1
+# Fetch latest tag from nginx-builder-ng
+echo -e "${BLUE}❯ ${CYAN}Resolving latest Nginx version...${RESET}"
+FULL_TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/markd3ng/nginx-builder-ng.git | grep -oE "nginx-mainline-mk/[0-9.]+(-[0-9]+)?" | tail -n1)
+
+if [ -z "$FULL_TAG" ]; then
+    echo -e "${YELLOW}Error: Could not resolve latest tag from nginx-builder-ng${RESET}"
+    exit 1
+fi
+
+ENCODED_TAG=$(echo "$FULL_TAG" | sed 's/\//%2F/g')
+VERSION=${FULL_TAG#nginx-mainline-mk/}
+
+echo -e "  Full Tag:    ${GREEN}$FULL_TAG${RESET}"
+echo -e "  Encoded Tag: ${GREEN}$ENCODED_TAG${RESET}"
+echo -e "  Version:     ${GREEN}$VERSION${RESET}"
 
 export BASE_IMAGE="${DOCKER_IMAGE}:latest"
 export ACMESH_IMAGE="${DOCKER_IMAGE}:acmesh"
@@ -25,10 +36,9 @@ export ACMESH_GOLANG_IMAGE="${DOCKER_IMAGE}:acmesh-golang"
 echo -e "${BLUE}❯ ${CYAN}Building ${YELLOW}latest ${CYAN}...${RESET}"
 docker build \
 	--pull \
-	--build-arg OPENRESTY_VERSION \
-	--build-arg CROWDSEC_OPENRESTY_BOUNCER_VERSION \
-	--build-arg LUA_VERSION \
-	--build-arg LUAROCKS_VERSION \
+	--build-arg NGINX_VERSION="$VERSION" \
+	--build-arg NGINX_FULL_TAG="$FULL_TAG" \
+    --build-arg NGINX_ENCODED_TAG="$ENCODED_TAG" \
 	-t "$BASE_IMAGE" \
 	-f docker/Dockerfile \
 	.
