@@ -239,7 +239,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            CERTBOT_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-certbot.outputs.version }}-certbot
+            CERTBOT_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-certbot.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -337,6 +337,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            ACMESH_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-acmesh.outputs.version }}-acmesh
+            ACMESH_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-acmesh.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
