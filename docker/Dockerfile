@@ -8,14 +8,8 @@ ARG NGINX_VERSION
 ARG NGINX_ENCODED_TAG
 ARG NGINX_RELEASE_URL="https://github.com/markd3ng/nginx-builder-ng/releases/download/${NGINX_ENCODED_TAG}"
 
-# Install tar/xz/grep/ca-certificates if needed (debian slim has them usually, but safe to check if network needed)
-# Actually ADD/COPY handles remote URL if supported, but here acts as Context. 
-# Wait, ADD supports URL. 
-# We need basic tools to extract.
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates xz-utils && rm -rf /var/lib/apt/lists/*
-
-# Download and extract pre-built Nginx
-WORKDIR /extract
+# We need basic tools to verify checksum.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Download via ADD (Cached by Docker if URL/Content doesn't change)
 ADD ${NGINX_RELEASE_URL}/sha256sums-${TARGETARCH}.txt /tmp/sha256sums.txt
