@@ -2,7 +2,7 @@ name: Build and Push Images
 
 on:
   push:
-    branches: [master]
+    branches: [master, optimization]
     paths-ignore:
       - '**.md'
       - '.github/workflows/**'
@@ -12,18 +12,28 @@ on:
       - '**.md'
       - '.github/workflows/**'
   workflow_dispatch:
+  repository_dispatch:
+    types: [nginx-release]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-base:
-    name: Build nginx-full:latest
+  build-base-matrix:
+    name: Build nginx-full:latest-${{ matrix.arch-slug }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch-slug: amd64
+          - platform: linux/arm64
+            arch-slug: arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,9 +58,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=pr
-
+            type=ref,event=branch,suffix=-${{ matrix.arch-slug }}
+            type=raw,value=latest,enable={{is_default_branch}},suffix=-${{ matrix.arch-slug }}
+            type=ref,event=pr,suffix=-${{ matrix.arch-slug }}
+            
       - name: Resolve Nginx Version
         id: nginx_version
         run: |
@@ -74,7 +85,7 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -82,17 +93,68 @@ jobs:
             NGINX_VERSION=${{ env.NGINX_VERSION }}
             NGINX_ENCODED_TAG=${{ env.NGINX_ENCODED_TAG }}
             NGINX_FULL_TAG=${{ env.NGINX_FULL_TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=base-${{ matrix.arch-slug }}
+          cache-to: type=gha,mode=max,scope=base-${{ matrix.arch-slug }}
+
+  merge-base:
+    name: Merge nginx-full:latest
+    runs-on: ubuntu-latest
+    needs: build-base-matrix
+    if: github.event_name != 'pull_request'
+    permissions:
+      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=pr
+
+      - name: Create Manifest
+        run: |
+           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+           # Use the version determined by metadata-action (e.g., 'optimization' or 'latest')
+           # Note: On master, meta outputs 'latest' line and 'master' line. Version typically picks the first? 
+           # Actually we can use the tags output which is multiline.
+           # But we need to know the *Suffixless* name of the source images.
+           # steps.meta.outputs.version is the 'primary' Docker tag.
+           
+           VERSION="${{ steps.meta.outputs.version }}"
+           echo "Merging artifacts for version: $VERSION"
+           
+           # Handle multiple tags for the target (e.g. latest AND master)
+           TAG_FLAGS=""
+           for tag in $(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' '); do
+              TAG_FLAGS="$TAG_FLAGS -t $tag"
+           done
+           
+           docker buildx imagetools create $TAG_FLAGS \
+             ${IMAGE}:${VERSION}-amd64 \
+             ${IMAGE}:${VERSION}-arm64
 
   build-certbot:
     name: Build nginx-full:certbot
     runs-on: ubuntu-latest
-    needs: build-base
+    needs: merge-base
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -110,6 +172,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-certbot
+            type=raw,value=latest,enable={{is_default_branch}},suffix=-certbot
+            type=ref,event=pr,suffix=-certbot
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -117,9 +189,9 @@ jobs:
           file: docker/Dockerfile.certbot
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:certbot
+          tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.merge-base.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -148,6 +220,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-certbot-node
+            type=raw,value=latest,enable={{is_default_branch}},suffix=-certbot-node
+            type=ref,event=pr,suffix=-certbot-node
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -155,20 +237,22 @@ jobs:
           file: docker/Dockerfile.certbot-node
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:certbot-node
+          tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            CERTBOT_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:certbot
+            CERTBOT_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-certbot.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   build-acmesh:
     name: Build nginx-full:acmesh
     runs-on: ubuntu-latest
-    needs: build-base
+    needs: merge-base
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -186,6 +270,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-acmesh
+            type=raw,value=latest,enable={{is_default_branch}},suffix=-acmesh
+            type=ref,event=pr,suffix=-acmesh
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -193,9 +287,9 @@ jobs:
           file: docker/Dockerfile.acmesh
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:acmesh
+          tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.merge-base.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -224,6 +318,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-acmesh-golang
+            type=raw,value=latest,enable={{is_default_branch}},suffix=-acmesh-golang
+            type=ref,event=pr,suffix=-acmesh-golang
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -231,8 +335,8 @@ jobs:
           file: docker/Dockerfile.acmesh-golang
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:acmesh-golang
+          tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            ACMESH_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:acmesh
+            ACMESH_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-acmesh.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
