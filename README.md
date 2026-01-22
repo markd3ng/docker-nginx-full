@@ -1,61 +1,83 @@
-# nginx-full
+# nginx-base-image
 
 <p>
-  <img src="https://img.shields.io/badge/openresty-1.27.1.2-green.svg?style=for-the-badge">
-  <img src="https://img.shields.io/badge/lua-5.1.5-green.svg?style=for-the-badge">
-  <img src="https://img.shields.io/badge/luarocks-3.3.1-green.svg?style=for-the-badge">
-  <a href="https://hub.docker.com/repository/docker/nginxproxymanager/nginx-full">
-    <img src="https://img.shields.io/docker/stars/nginxproxymanager/nginx-full.svg?style=for-the-badge">
+  <a href="https://github.com/markd3ng/nginx-base-image/actions/workflows/build.yml">
+    <img src="https://github.com/markd3ng/nginx-base-image/actions/workflows/build.yml/badge.svg" alt="Build Status">
   </a>
-  <a href="https://hub.docker.com/repository/docker/nginxproxymanager/nginx-full">
-    <img src="https://img.shields.io/docker/pulls/nginxproxymanager/nginx-full.svg?style=for-the-badge">
+  <a href="https://github.com/markd3ng/nginx-base-image/pkgs/container/nginx-base-image">
+    <img src="https://img.shields.io/badge/ghcr.io-nginx--base--image-blue?style=flat-square&logo=github" alt="GHCR">
   </a>
 </p>
 
-This is a base image for use in other images. See Dockerfile for build steps.
+Docker base images for [Nginx Proxy Manager](https://github.com/NginxProxyManager/nginx-proxy-manager), built with pre-compiled Nginx binaries from [nginx-builder-ng](https://github.com/markd3ng/nginx-builder-ng).
 
-The following images are built:
+## Features
 
-**latest**
-- OpenResty
-- Lua
-- [Crowdsec Openresty Bouncer](https://github.com/crowdsecurity/cs-openresty-bouncer)
+- 🚀 **Pre-built Nginx** — Uses optimized, pre-compiled binaries (no compilation during image build)
+- 🏗️ **Multi-stage Dockerfile** — Minimal final image size
+- ⚡ **Parallel Architecture Builds** — AMD64 and ARM64 built simultaneously
+- ✅ **Built-in Smoke Tests** — `nginx -t` validation during build
+- 🔄 **Automatic Triggers** — Supports `repository_dispatch` for upstream releases
 
-**certbot**
-- Certbot
-- Python3 and pip
+## Available Images
 
-**acmesh** _(used in Nginx Proxy Manager v3)_
-- Acme.sh
+| Tag | Description |
+|-----|-------------|
+| `latest` | Base image with Nginx/OpenResty |
+| `certbot` | + Certbot, Python3, pip |
+| `certbot-node` | + Certbot, Python3, pip, Node.js *(NPM v2)* |
+| `acmesh` | + acme.sh *(NPM v3)* |
+| `acmesh-golang` | + acme.sh, Golang *(NPM v3 dev)* |
 
-**certbot-node** _(used in Nginx Proxy Manager v2)_
-- Certbot
-- Python3 and pip
-- Nodejs
+## Supported Architectures
 
-**acmesh-golang** _(development for Nginx Proxy Manager v3)_
-- Acme.sh
-- Golang
+- `linux/amd64`
+- `linux/arm64`
 
-The following architectures are supported for all images:
+## Usage
 
-- amd64
-- arm/v7
-- arm64
+### As Base Image
 
-### Usage:
+```dockerfile
+FROM ghcr.io/markd3ng/nginx-base-image:latest
 
-```
-FROM nginxproxymanager/nginx-full:latest
-
-...
+# Your application layers...
 ```
 
-#### Acme.sh Example
+### Local Build
+
+```bash
+./local-build.sh
+```
+
+This script automatically fetches the latest Nginx version from `nginx-builder-ng` releases.
+
+### Acme.sh Example
+
+```bash
+docker run --rm \
+  -v /path/to/acme-data:/data/.acme.sh \
+  ghcr.io/markd3ng/nginx-base-image:acmesh \
+  acme.sh --help
+```
+
+## Build Pipeline
 
 ```
-docker run \
-  -v /path/to/local/acme-data:/data/.acme.sh \
-  nginxproxymanager/nginx-full:acmesh \
-  acme.sh -h
+nginx-builder-ng (compile Nginx)
+        ↓
+   GitHub Release (tar.gz + checksums)
+        ↓
+nginx-base-image (download → verify → extract → package)
+        ↓
+   GHCR (multi-arch manifest)
 ```
+
+## Related Projects
+
+- [nginx-builder-ng](https://github.com/markd3ng/nginx-builder-ng) — Nginx compiler with OpenSSL, PCRE2, zlib
+- [nginx-proxy-manager](https://github.com/NginxProxyManager/nginx-proxy-manager) — Full proxy management UI
+
+## License
+
+MIT
