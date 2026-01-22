@@ -19,16 +19,15 @@ WORKDIR /extract
 
 # Download via ADD (Cached by Docker if URL/Content doesn't change)
 ADD ${NGINX_RELEASE_URL}/sha256sums-${TARGETARCH}.txt /tmp/sha256sums.txt
-ADD ${NGINX_RELEASE_URL}/nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz /tmp/
+ADD ${NGINX_RELEASE_URL}/nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz /tmp/nginx.tar.gz
 
-# Verify and Extract
+# Verify checksum (keep tarball for final stage)
 RUN cd /tmp \
-	&& grep "nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz" sha256sums.txt | sha256sum -c - \
-	&& tar -xzf nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz -C /extract \
-	&& rm nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz sha256sums.txt
+	&& grep "nginx-mainline-mk-${NGINX_VERSION}-linux-${TARGETARCH}.tar.gz" sha256sums.txt | sed 's/nginx-mainline-mk.*\.tar\.gz/nginx.tar.gz/' | sha256sum -c - \
+	&& rm sha256sums.txt
 
 # Download expected modules list
-ADD ${NGINX_RELEASE_URL}/expected_modules.txt /extract/etc/nginx/modules/expected_modules.txt
+ADD ${NGINX_RELEASE_URL}/expected_modules.txt /tmp/expected_modules.txt
 
 #############
 # Final Image
@@ -72,8 +71,10 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -rf /var/cache/* /var/log/* /tmp/* /var/lib/dpkg/status-old
 
-# Copy unpacked Nginx from downloader stage
-COPY --from=downloader /extract/ /
+# Copy and extract Nginx from downloader stage (tar handles symlinks correctly)
+COPY --from=downloader /tmp/nginx.tar.gz /tmp/nginx.tar.gz
+COPY --from=downloader /tmp/expected_modules.txt /etc/nginx/modules/expected_modules.txt
+RUN tar -xzf /tmp/nginx.tar.gz -C / && rm /tmp/nginx.tar.gz
 
 # Post-install setup
 RUN ldconfig \
